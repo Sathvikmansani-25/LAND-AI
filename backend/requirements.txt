@@ -1,0 +1,60 @@
+# LandGuard AI backend -- originally-proposed stack:
+# FastAPI + SQLAlchemy/PostgreSQL + XGBoost + SHAP + python-jose + passlib.
+#
+# Version pins are not re-verified in this environment (this sandbox has no
+# network access to PyPI); they are recent, mutually-compatible releases as
+# of when this file was written. Run `pip install -r requirements.txt` on a
+# machine with internet access (this repo's authors verified it on the
+# developer's own Windows machine) and re-pin with `pip freeze` if you hit
+# any resolver conflicts.
+
+# --- Web framework -----------------------------------------------------
+fastapi==0.115.6
+# Vercel's own Python runtime wraps the FastAPI `app` object directly, so
+# uvicorn is only needed to run the server locally (`uvicorn app.main:app`).
+uvicorn[standard]==0.34.0
+
+# --- Data validation / settings -----------------------------------------
+pydantic==2.13.3
+pydantic-settings==2.14.0
+
+# --- Database (PostgreSQL via SQLAlchemy) -------------------------------
+SQLAlchemy==2.0.36
+# psycopg (v3, "binary" build) rather than psycopg2-binary: psycopg2-binary
+# doesn't always have a prebuilt wheel ready for the newest CPython release
+# on Windows yet, and building it from source needs a full PostgreSQL dev
+# toolchain (pg_config, libpq headers) most machines don't have configured
+# -- if that's missing you'll see a "Cannot open include file: 'basetsd.h'"
+# or similar build error. psycopg3's binary wheels bundle libpq statically
+# and track new CPython releases faster. Left unpinned to a minimum version
+# (rather than an exact pin like everything else here) so pip can pick
+# whichever release actually has a wheel for your Python version/platform.
+psycopg[binary]>=3.2.3
+
+# --- Auth: JWT + password hashing ---------------------------------------
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+# passlib 1.7.4's bcrypt backend expects bcrypt<4; pin explicitly so a
+# newer bcrypt release (which drops the internal API passlib inspects)
+# doesn't get resolved in and break password hashing at import time.
+bcrypt==3.2.2
+
+# --- ML: XGBoost classifier/regressor + SHAP explainability -------------
+xgboost==2.1.3
+# shap 0.46.0's bundled plots/colors module calls a numpy dtype API
+# (constructing a dtype from an abstract scalar type like np.floating) that
+# newer numpy releases no longer allow, so `import shap` itself can crash
+# with "TypeError: Converting `np.inexact` or `np.floating` to a dtype not
+# allowed" on a recent numpy -- unrelated to anything this app does; it's
+# hit just by importing the package, before TreeExplainer (the only part we
+# actually use) is ever touched. Left unpinned to a minimum version so pip
+# installs whatever later shap release has fixed that for the numpy version
+# below, rather than being stuck on the exact release that hits it.
+shap>=0.46.0
+scikit-learn==1.8.0
+pandas==3.0.2
+numpy==2.4.4
+joblib==1.5.3
+
+# --- Production ASGI server (non-Vercel deployment only) ----------------
+gunicorn==22.0.0
