@@ -1,5 +1,5 @@
 import os
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel
 
 
 def _load_dotenv_simple(path: str) -> None:
@@ -69,7 +69,16 @@ _DATABASE_URL_UNPOOLED = (
 )
 
 
-class Settings(BaseSettings):
+class Settings(BaseModel):
+    # Plain BaseModel, not pydantic_settings.BaseSettings, on purpose: every
+    # field below already reads its own env var explicitly via os.getenv(...)
+    # in its default expression (so a normalized/derived value -- like the
+    # postgresql+psycopg:// URL built by _normalize_database_url -- can differ
+    # from the raw env var). BaseSettings would auto-bind each field to its
+    # same-named env var and silently override these computed defaults with
+    # the RAW env var value, undoing exactly that normalization -- which is
+    # exactly what caused SQLAlchemy to pick the psycopg2 dialect instead of
+    # psycopg (v3) once a real DATABASE_URL was set (Neon/Vercel).
     app_name: str = "LandGuard AI"
 
     # Normal request-time database connection (pooled, if available). See
